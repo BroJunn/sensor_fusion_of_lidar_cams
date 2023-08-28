@@ -9,8 +9,9 @@ This repository provides code and guidelines for sensor fusion of lidar and came
   - [OpenPCDet](#openpcdet)
   - [Other Dependencies](#other-dependencies)
 - [Bug Fixes](#bug-fixes)
-  - [Argoverse2 Bug](#bug-related-to-argoverse2-in-openpcdet)
-  - [Official Checkpoint](#official-checkpoint)
+  - [Bug related to Argoverse2 in Openpcdet](#bug-related-to-argoverse2-in-openpcdet)
+  - [Invalid Official Checkpoint of Openpcdet](#invalid-official-checkpoint-of-openpcdet)
+- [Download Dataset](#download-dataset)
 - [Get Started](#get-started)
 
 ## Prerequisites
@@ -75,7 +76,7 @@ box_colormap = [
 ```
 
 
-### Official Checkpoint
+### Invalid Official Checkpoint of Openpcdet
 
 Please note that the pretrained Argoverse2 model in the official repository has issues. Use the one provided in the \`tools/argo2_model\` directory instead.
 
