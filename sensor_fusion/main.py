@@ -46,25 +46,13 @@ def parse_config():
         "--cfg_file",
         type=str,
         default="tools/cfgs/argo2_models/cbgs_voxel01_voxelnext.yaml",
-        help="specify the config for demo",
-    )
-    parser.add_argument(
-        "--data_path",
-        type=str,
-        default="/home/yujun/Code/pc_det/pc_data_npy/data4.npy",
-        help="specify the point cloud data file or directory",
+        help="specify the dataset config",
     )
     parser.add_argument(
         "--ckpt",
         type=str,
-        default="/home/yujun/Code/pc_det/pth_folder/VoxelNeXt_Argo2_arranged.pth",
+        default="tools/argo2_model/VoxelNeXt_Argo2_arranged.pth",
         help="specify the pretrained model",
-    )
-    parser.add_argument(
-        "--ext",
-        type=str,
-        default=".npy",
-        help="specify the extension of your point cloud data file",
     )
 
     args = parser.parse_args()
@@ -91,11 +79,6 @@ def main():
     model.load_params_from_file(filename=args.ckpt, logger=logger, to_cpu=True)
     model.cuda()
     model.eval()
-
-    # 2d detection model
-    # model = YOLO("yolov8n.pt").cuda()
-    # model.eval()
-    # results = model("")
 
     with torch.no_grad():
         for scene_idx, scene_info_dict in enumerate(scene_dataset):
@@ -196,7 +179,9 @@ def main():
                     }
                 )
                 vis_tracker.visualize(tracker)
+            
             vis_tracker.generate_anim('ani_with_2d_filter_' + str(scene_idx) + '.gif')
+            logger.info("-----------------Done with Animation Generation-------------------------")
 
 # visualize the result
 if __name__ == "__main__":
