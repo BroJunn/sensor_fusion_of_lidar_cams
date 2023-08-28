@@ -54,7 +54,12 @@ def parse_config():
         default="tools/argo2_model/VoxelNeXt_Argo2_arranged.pth",
         help="specify the pretrained model",
     )
-
+    parser.add_argument(
+        "--root_path",
+        type=str,
+        default="/home/yujun/Dataset/Argoverse2_sensor/train-000/sensor/train/",
+        help="specify the root path of the dataset",
+    )
     args = parser.parse_args()
 
     cfg_from_yaml_file(args.cfg_file, cfg)
@@ -70,7 +75,7 @@ def main():
     scene_dataset = SceneDataset(
         dataset_cfg=cfg.DATA_CONFIG,
         class_names=cfg.CLASS_NAMES,
-        root_path="/home/yujun/Dataset/Argoverse2_sensor/train-000/sensor/train/",
+        root_path=args.root_path,
     )
 
     model = build_network(
@@ -96,7 +101,14 @@ def main():
                 diffs_lidar_ego,
             ) = find_closest_timestamps_sorted(timestamps_lidar, timestamps_ego)
             vis_tracker = TrackerVisualizer()
-            detect_2d_filter = Detect2dFilter(scene_info_dict["cam_data"], scene_info_dict["cam_timestamps"], timestamps_lidar, scene_dataset.cam_names, scene_info_dict["intrinsics"], scene_info_dict["extrinsics"])
+            detect_2d_filter = Detect2dFilter(
+                scene_info_dict["cam_data"],
+                scene_info_dict["cam_timestamps"],
+                timestamps_lidar,
+                scene_dataset.cam_names,
+                scene_info_dict["intrinsics"],
+                scene_info_dict["extrinsics"],
+            )
             # flag_first_frame = True
 
             # iterate through each lidar frame
@@ -116,7 +128,9 @@ def main():
                         pred_dict[0]["pred_scores"] >= 0.5
                     ],
                 }
-                filtered_dict_2d_detect = detect_2d_filter.filter(idx_lidar, filtered_dict)
+                filtered_dict_2d_detect = detect_2d_filter.filter(
+                    idx_lidar, filtered_dict
+                )
                 # view 3d point clouds
                 # V.draw_scenes(
                 #     points=data_dict['points'][:, 1:], ref_boxes=pred_dict[0]['pred_boxes'],
@@ -139,7 +153,8 @@ def main():
                 filtered_dict_ref = {
                     "pred_scores": filtered_dict_2d_detect["pred_scores"],
                     "pred_boxes": transform_3d_detection_to_world_frame(
-                        filtered_dict_2d_detect["pred_boxes"], np.linalg.inv(T_ref) @ T_ego
+                        filtered_dict_2d_detect["pred_boxes"],
+                        np.linalg.inv(T_ref) @ T_ego,
                     ),
                     "pred_labels": filtered_dict_2d_detect["pred_labels"],
                 }
@@ -179,9 +194,12 @@ def main():
                     }
                 )
                 vis_tracker.visualize(tracker)
-            
-            vis_tracker.generate_anim('ani_with_2d_filter_' + str(scene_idx) + '.gif')
-            logger.info("-----------------Done with Animation Generation-------------------------")
+
+            vis_tracker.generate_anim("ani_with_2d_filter_" + str(scene_idx) + ".gif")
+            logger.info(
+                "-----------------Done with Animation Generation-------------------------"
+            )
+
 
 # visualize the result
 if __name__ == "__main__":
