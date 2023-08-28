@@ -109,5 +109,5 @@ The root_path has to be arranged like this (just the default format):
 ## Get Started
 Get started by running:
 ```python
-python main.py --root_path YOUR/DATASET/PATH
+python sensor_fusion/main.py --root_path YOUR/DATASET/PATH
 ```
