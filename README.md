@@ -3,7 +3,7 @@
 This repository provides code and guidelines for sensor fusion of lidar and cameras. Below are the steps for installation and bug fixes.
 
 ## Table of Contents
-
+- [Visualization](#visualization)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
   - [OpenPCDet](#openpcdet)
@@ -13,6 +13,9 @@ This repository provides code and guidelines for sensor fusion of lidar and came
   - [Invalid Official Checkpoint of Openpcdet](#invalid-official-checkpoint-of-openpcdet)
 - [Download Dataset](#download-dataset)
 - [Get Started](#get-started)
+
+## Visualization
+![示例GIF](assets/vis_scene_0.gif)
 
 ## Prerequisites
 
