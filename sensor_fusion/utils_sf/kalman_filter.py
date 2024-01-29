@@ -9,7 +9,7 @@ from sensor_fusion.utils_sf.iou_2d import compute_2d_iou
 
 class KalmanFilter():
 
-    def __init__(self, statePost, dt=0.05):
+    def __init__(self, statePost, dt=0.1):
         self.dt = dt
         self.kf = cv2.KalmanFilter(11, 11)
 
@@ -63,7 +63,7 @@ class TrackedObject():
         self.label_idx: int
         self.kalman_filter = None
         self.timestep: int = 0
-        self.dt=0.05
+        self.dt=0.1
 
         self.history: List[np.ndarray] = []
         self.label_history: List[int] = []
@@ -79,12 +79,20 @@ class TrackedObject():
             self.kalman_filter = KalmanFilter(measurement)
             self.state = measurement
         else:
+            # measurement = np.array([
+            #     detecition[0], detecition[1], detecition[2], 
+            #     (detecition[0] - self.history[-1][0]) / self.dt, 
+            #     (detecition[1] - self.history[-1][1]) / self.dt, 
+            #     (detecition[2] - self.history[-1][2]) / self.dt, 
+            #     detecition[3], detecition[4], detecition[5], detecition[6], (detecition[6] - self.history[-1][9]) / self.dt
+            # ], dtype=np.float32)
             measurement = np.array([
                 detecition[0], detecition[1], detecition[2], 
                 (detecition[0] - self.history[-1][0]) / self.dt, 
                 (detecition[1] - self.history[-1][1]) / self.dt, 
                 (detecition[2] - self.history[-1][2]) / self.dt, 
-                detecition[3], detecition[4], detecition[5], detecition[6], (detecition[6] - self.history[-1][9]) / self.dt
+                detecition[3], detecition[4], detecition[5],
+                detecition[6] * 0.8 + np.arctan((detecition[1] - self.history[-1][1]) / (detecition[0] - self.history[-1][0])) * 0.2, 0.0
             ], dtype=np.float32)
             self.state = self.kalman_filter.update(measurement)
         self.history.append(self.state)
@@ -106,7 +114,7 @@ class Trackers():
         predictions = [tracked_obj.predict() for tracked_obj in self.tracked_objs]
 
         matches, unmatched_detections, unmatched_predictions = self.data_association(predictions, detections, self.iou_threshold)
-        print()
+        
         for match in matches:
             tracker_idx, detection_idx = match
             self.tracked_objs[tracker_idx].update(detections[detection_idx], labels[detection_idx])

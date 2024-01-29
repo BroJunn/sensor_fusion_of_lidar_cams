@@ -3,6 +3,7 @@ from PIL import Image
 import cv2
 import numpy as np
 import torch
+import os
 
 from utils_sf.iou_2d import compute_2d_iou
 from utils_sf.utils import (
@@ -21,6 +22,8 @@ class Detect2dFilter:
         cam_names,
         intrinsics,
         extrinsics,
+        scene_index: int = None,
+        save_dir: str = '2d_vis_pool'
     ):
         """
         cam_data_dict: Dict[str, List[np.ndarray]]
@@ -36,6 +39,8 @@ class Detect2dFilter:
         self.cam_names = cam_names
         self.intrinsics = intrinsics
         self.extrinsics = extrinsics
+        self.scene_index = scene_index
+        self.save_dir = save_dir
 
         self.closest_timestamps_cams = {}
         self.closest_indices_cams = {}
@@ -52,9 +57,9 @@ class Detect2dFilter:
         self.model = YOLO("sensor_fusion/yolo_pt/yolov8n.pt")
         self.model.model.eval()
         self.model.model.cuda()
-        print()
 
-    def filter(self, idx_lidar: int, pred_dict):
+
+    def filter(self, idx_lidar: int, pred_dict, if_write_img: bool = False):
         list_line_set = get_line_set(pred_dict["pred_boxes"])
         valid_pred_idx = []
         for cam_name in self.cam_names:
@@ -68,12 +73,35 @@ class Detect2dFilter:
 
             # self._vis_2d_detection_result(r)
             xywhs = r.boxes.xywh
-            # img_2d = self._draw_2d_bbox_on_image(img.copy(), xywhs)
-            # cv2.imwrite('2d_bbox.png', img_2d)
+            if if_write_img:
+                save_dir_path = (
+                    self.save_dir
+                    + '/'
+                    + "idx_scene_"
+                    + str(self.scene_index)
+                    + "/idx_lidar_"
+                    + str(idx_lidar)
+                    + "/"
+                    + str(cam_name)
+                    + "/"
+                )
+                os.makedirs(save_dir_path, exist_ok=True)
+                img_save_path = os.path.join(
+                    save_dir_path,
+                    str(self.closest_indices_cams[cam_name][idx_lidar]) + ".png",
+                )
 
-            # vis 3d bbox
-            # img_3d = self._draw_3d_bbox_on_image(img.copy(), list_line_set, T, K)
+                img_2d = self._draw_2d_bbox_on_image(
+                    img.copy()[:, :, None].repeat(3, axis=2), xywhs
+                )
+                cv2.imwrite(img_save_path, img_2d)
+
+            # vis 3d bbox on img_2d
+            # img_3d = self._draw_3d_bbox_on_image(img.copy()[:, :, None].repeat(3, axis=2), list_line_set, T, K)
             # cv2.imwrite('3d_bbox.png', img_3d)
+            # vis both 2d and 3d bbox on img_2d
+            # img_3d = self._draw_3d_bbox_on_image(img_2d.copy(), list_line_set, T, K)
+            # cv2.imwrite('2d_3d_bbox.png', img_3d)
             list_points_2d, valid_list_line_set = self._3dbbox_to_2dbbox(
                 list_line_set, T, K, img.shape
             )
@@ -107,7 +135,7 @@ class Detect2dFilter:
         return unique_elements
 
     def _vis_2d_detection_result(self, yolo_res):
-        im_array = r.plot()  # plot a BGR numpy array of predictions
+        im_array = yolo_res.plot()  # plot a BGR numpy array of predictions
         im = Image.fromarray(im_array[..., ::-1])
         im.save("2d_detect_res.jpg")
 
@@ -121,7 +149,7 @@ class Detect2dFilter:
             top_left = (int(x - w // 2), int(y - h // 2))
             bottom_right = (int(x + w // 2), int(y + h // 2))
 
-            cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 2)
+            cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 3)
 
         return img
 
@@ -135,7 +163,7 @@ class Detect2dFilter:
                     (int(points_2d[line_pair[0], 0]), int(points_2d[line_pair[0], 1])),
                     (int(points_2d[line_pair[1], 0]), int(points_2d[line_pair[1], 1])),
                     (0, 0, 255),
-                    1,
+                    2,
                 )
 
         return img
@@ -152,13 +180,27 @@ class Detect2dFilter:
             )
             points_2d = np.dot(K, box_points_cam.T).T
             points_2d = points_2d[:, :2] / points_2d[:, 2][:, None]
+
             if not (
-                points_2d.min() < 0
-                or points_2d[:, 0].max() >= img_size[0]
-                or points_2d[:, 1].max() >= img_size[1]
+                points_2d[:, 0].max() <= 0
+                or points_2d[:, 1].max() <= 0
+                or points_2d[:, 0].min() >= img_size[0] - 1
+                or points_2d[:, 1].min() >= img_size[1] - 1
             ):
+                # 修正第一维度的值使其在0-255范围内
+                points_2d[:, 0] = np.clip(points_2d[:, 0], 0, img_size[0] - 1)
+
+                # 使第二维度的值在0-359范围内
+                points_2d[:, 1] = np.clip(points_2d[:, 1], 0, img_size[1] - 1)
                 list_points_2d.append(points_2d)
                 valid_list_line_set.append(idx_3d_det)
+            # if not (
+            #     points_2d.min() < 0
+            #     or points_2d[:, 0].max() >= img_size[0]
+            #     or points_2d[:, 1].max() >= img_size[1]
+            # ):
+            #     list_points_2d.append(points_2d)
+            #     valid_list_line_set.append(idx_3d_det)
 
         return list_points_2d, valid_list_line_set
 

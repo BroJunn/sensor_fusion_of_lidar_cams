@@ -87,6 +87,7 @@ def main():
 
     with torch.no_grad():
         for scene_idx, scene_info_dict in enumerate(scene_dataset):
+
             # load data
             lidar_datas = scene_info_dict["lidar_data"]
             timestamps_lidar = scene_info_dict["lidar_timestamps"]
@@ -100,7 +101,7 @@ def main():
                 closest_timestamps_lidar_ego,
                 diffs_lidar_ego,
             ) = find_closest_timestamps_sorted(timestamps_lidar, timestamps_ego)
-            vis_tracker = TrackerVisualizer()
+            vis_tracker = TrackerVisualizer(scene_idx=scene_idx, save_dir='2d_vis_pool')
             detect_2d_filter = Detect2dFilter(
                 scene_info_dict["cam_data"],
                 scene_info_dict["cam_timestamps"],
@@ -108,8 +109,10 @@ def main():
                 scene_dataset.cam_names,
                 scene_info_dict["intrinsics"],
                 scene_info_dict["extrinsics"],
+                scene_idx
             )
             # flag_first_frame = True
+            # list_ego_T_for_lidar_timestep = []
 
             # iterate through each lidar frame
             for idx_lidar, lidar_data in tqdm(enumerate(lidar_datas)):
@@ -129,7 +132,7 @@ def main():
                     ],
                 }
                 filtered_dict_2d_detect = detect_2d_filter.filter(
-                    idx_lidar, filtered_dict
+                    idx_lidar, filtered_dict, True
                 )
                 # view 3d point clouds
                 # V.draw_scenes(
@@ -150,6 +153,8 @@ def main():
                     timestamps_ego[closest_indices_lidar_ego[idx_lidar]],
                     True,
                 )
+                # list_ego_T_for_lidar_timestep.append(timestamps_ego[closest_indices_lidar_ego[idx_lidar]])
+                # T_world_0ego  T_world_current    T_cur_0ego  P_0ego   T_ego.T @ T_ref
                 filtered_dict_ref = {
                     "pred_scores": filtered_dict_2d_detect["pred_scores"],
                     "pred_boxes": transform_3d_detection_to_world_frame(
@@ -193,9 +198,9 @@ def main():
                         "labels": list(filtered_dict_ref["pred_labels"]),
                     }
                 )
-                vis_tracker.visualize(tracker)
+                vis_tracker.visualize(tracker, lidar_idx=idx_lidar, Transformations=np.linalg.inv(T_ego) @ T_ref)
 
-            vis_tracker.generate_anim("ani_with_2d_filter_" + str(scene_idx) + ".gif")
+            vis_tracker.generate_anim("vis_scene_" + str(scene_idx) + ".gif")
             logger.info(
                 "-----------------Done with Animation Generation-------------------------"
             )
